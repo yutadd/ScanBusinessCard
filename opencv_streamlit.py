@@ -17,6 +17,9 @@ if uploaded_file is not None:
     # 画像を表示
     image = Image.open(uploaded_file)
     st.image(image, caption='アップロードされた画像。', width=300,use_column_width=True)
+        # 画像をRGB形式に変換
+    if image.mode == 'RGBA':
+        image = image.convert('RGB')
     # 画像をOpenCV形式に変換
     img_array = np.array(image)
     st.write("画像の形状:", img_array.shape)
@@ -27,14 +30,17 @@ if uploaded_file is not None:
     for result in results:
             boxes = result.boxes.xyxy.cpu().numpy()
             for box in boxes:
-                x1, y1, x2, y2 = map(int, box)
-                business_card = img_array[y1:y2, x1:x2]
-                # 切り取った名刺を表示
-                st.image(business_card, caption='切り取られた名刺。',width=300, use_column_width=True)
-                output_path = "./tmp/output"+str(image_count)+".png"
-                cv2.imwrite(output_path, business_card)
-                st.write(f"切り取られた名刺が {output_path} に保存されました。")
-                image_count+=1
+                if result.names[int(result.boxes.cls[0])] == 'meishi':
+                    x1, y1, x2, y2 = map(int, box)
+                    business_card = img_array[y1:y2, x1:x2]
+                    # 切り取った名刺を表示
+                    st.image(business_card, caption='切り取られた名刺。',width=150, use_column_width=True)
+                    output_path = "./tmp/output"+str(image_count)+".png"
+                    cv2.imwrite(output_path, business_card)
+                    st.write(f"切り取られた名刺が {output_path} に保存されました。")
+                    image_count+=1
+                else:
+                    print("this is not meishi")
     answer_placeholder = st.empty()  # プレースホルダーを作成
     print("detected "+str(image_count)+" cards")
     client = OpenAI()

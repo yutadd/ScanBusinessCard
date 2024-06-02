@@ -13,6 +13,7 @@
         "phone":"string (e.g. 090-1234-5678)",
         "email":"string",
         "address":"string",
+        "website":"string",
         "additional_info":"追加の情報（e.g. 名刺にメモされている情報,名刺に書いてある自己紹介,その他）"
     },
 ...(別の人の名刺がある場合は続く)
