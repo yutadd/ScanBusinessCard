@@ -3,6 +3,7 @@ import cv2
 import streamlit as st
 from PIL import Image  # 追加
 import numpy as np
+import pytesseract
 from openai import OpenAI
 from ultralytics import YOLO 
 # TODO: ai-prog-4にインストールされたlabelImgを使って名刺を切り抜く処理をアップグレード中
@@ -44,7 +45,8 @@ if uploaded_file is not None:
                 image_count += 1
             else:
                 print("{0},{1}".format(confidence,names[label]))
-    answer_placeholder = st.empty()  # プレースホルダーを作成
+
+    
     print("detected "+str(image_count)+" cards")
     client = OpenAI()
     thread=client.beta.threads.create()
@@ -56,6 +58,23 @@ if uploaded_file is not None:
         else:
             print("con't read file")
     if len(files)>0:
+        GPT_answer_placeholder = st.text("GPT:計算中")  # プレースホルダーを作成
+        tesseract_answer_placeholder=st.text("tesseract:計算中")
+        import pytesseract
+        from PIL import Image
+
+        # pytesseractの設定
+        pytesseract.pytesseract.tesseract_cmd = r'D:\tesseractOCR\tesseract.exe'  # Tesseractのパスを指定
+
+        ocr_results = []
+        for a in range(image_count):
+            image_path = "./tmp/output" + str(a) + ".png"
+            text = pytesseract.image_to_string(Image.open(image_path), lang='jpn')
+            ocr_results.append(text)
+            tesseract_answer_placeholder.text("tesseract:出力なし" if (text is None or text=="") else text)
+        if not ocr_results:
+            tesseract_answer_placeholder.text("tesseract:OCR処理に失敗しました。")
+        # =================================
         assistant=client.beta.assistants.retrieve(assistant_id="asst_1Y5PWnS8cy8pDUzIyefSJtJT")
         print(files,"←thread object")
         run = client.beta.threads.create_and_run(
@@ -67,26 +86,27 @@ if uploaded_file is not None:
             }
         )
         print(run.status)
-        answer_placeholder.text("処理しています")
+        GPT_answer_placeholder.text("GPT:処理しています")
         while(run.status=="queued"):
-            answer_placeholder.text("処理のキューに入りました")
+            GPT_answer_placeholder.text("GPT:処理のキューに入りました")
             time.sleep(1)
             run = client.beta.threads.runs.retrieve(thread_id=run.thread_id, run_id=run.id)
             print(run.status)
         while run.status=="in_progress":
-            answer_placeholder.text("処理しています")
+            GPT_answer_placeholder.text("GPT:処理しています")
             run = client.beta.threads.runs.retrieve(thread_id=run.thread_id, run_id=run.id)
             print(run.status)
             time.sleep(1)
         if run.status=="completed":
             messages = client.beta.threads.messages.list(thread_id=run.thread_id)
             if messages.data[0].content[0].text.value:
-                answer_placeholder.text(messages.data[0].content[0].text.value)
+                GPT_answer_placeholder.text("GPT:"+messages.data[0].content[0].text.value)
             else:
-                st.error("essages.data[0].content[0].textの中身が空っぽです")
+                GPT_answer_placeholder.text("GPT:messages.data[0].content[0].textの中身が空っぽです")
                 print(messages[0])
         else:
             st.error(run.status)
             st.error(run.last_error)
     else:
+        st.text("No files readed")
         print("No files readed")
